@@ -1,0 +1,8 @@
+# Treat office and report assets as binary files.
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary

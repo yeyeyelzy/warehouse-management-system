@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('库存预警')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>库存预警</h2>
+    <p style="color:#888;font-size:13px;">预警记录由数据库触发器（trg_stock_after_insert/update）在出入库等引起库存变动时自动生成并写入 stock_alert 表。</p>
+
+    <div class="tab-nav">
+        <a th:href="@{/warning(tab=realtime)}" th:classappend="${activeTab == 'realtime'} ? 'active' : ''">实时预警货品</a>
+        <a th:href="@{/warning(tab=records)}" th:classappend="${activeTab == 'records'} ? 'active' : ''">预警记录</a>
+    </div>
+
+    <!-- 实时预警货品（视图 v_stock_warning） -->
+    <div th:if="${activeTab == 'realtime'}">
+        <table>
+            <thead>
+            <tr><th>货品编码</th><th>货品名称</th><th>仓库</th><th>当前数量</th><th>下限</th><th>上限</th><th>预警类型</th><th>缺口/超出</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="w : ${warningList}">
+                <td th:text="${w.goods_code}"></td>
+                <td th:text="${w.goods_name}"></td>
+                <td th:text="${w.warehouse_name}"></td>
+                <td th:text="${w.current_quantity}"></td>
+                <td th:text="${w.lower_limit}"></td>
+                <td th:text="${w.upper_limit}"></td>
+                <td><span class="tag" th:classappend="${w.warn_type == 'LOW'} ? 'low' : 'over'" th:text="${w.warn_type}"></span></td>
+                <td th:text="${w.warn_quantity}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 预警记录（表 stock_alert） -->
+    <div th:if="${activeTab == 'records'}">
+        <table>
+            <thead>
+            <tr><th>货品</th><th>仓库</th><th>类型</th><th>当前数量</th><th>阈值</th><th>时间</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="a : ${alertList}">
+                <td th:text="${a.goods_name}"></td>
+                <td th:text="${a.warehouse_name}"></td>
+                <td><span class="tag" th:classappend="${a.alert_type == 'LOW'} ? 'low' : 'over'" th:text="${a.alert_type}"></span></td>
+                <td th:text="${a.current_quantity}"></td>
+                <td th:text="${a.threshold}"></td>
+                <td th:text="${a.alert_time}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

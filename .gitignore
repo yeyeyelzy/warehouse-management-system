@@ -1,0 +1,19 @@
+# Local secrets and environment-specific configuration
+code/src/.env
+code/src/src/main/resources/application-local.yml
+.claude/settings.local.json
+
+# Build output and IDE files
+**/target/
+**/.idea/
+**/.vscode/
+
+# Local backups and generated files
+code/src/backup/
+报告/*.bak.docx
+*.log
+*.tmp
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db

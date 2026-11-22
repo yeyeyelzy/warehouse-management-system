@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    import: optional:file:./.env[.properties]
+  datasource:
+    url: jdbc:mysql://localhost:3306/warehouse_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${WAREHOUSE_DB_USERNAME:root}
+    password: ${WAREHOUSE_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  thymeleaf:
+    cache: false
+    encoding: UTF-8
+    prefix: classpath:/templates/
+    suffix: .html
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

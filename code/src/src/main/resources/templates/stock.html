@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('库存查询')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>库存查询（实时库存总览）</h2>
+    <p style="color:#888;font-size:13px;">数据来源：视图 v_stock_overview，实时展示库存数量、占用资金、上下限与库存状态。</p>
+    <table>
+        <thead>
+        <tr><th>货品编码</th><th>货品名称</th><th>分类</th><th>仓库</th><th>库存数量</th><th>占用资金</th><th>计价方式</th><th>状态</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${stockList}">
+            <td th:text="${s.goodsCode}"></td>
+            <td th:text="${s.goodsName}"></td>
+            <td th:text="${s.categoryName}"></td>
+            <td th:text="${s.warehouseName}"></td>
+            <td th:text="${s.stockQuantity}"></td>
+            <td th:text="${s.occupiedCost}"></td>
+            <td th:text="${s.costMethod}"></td>
+            <td>
+                <span class="tag" th:classappend="${s.stockStatus == 'LOW'} ? 'low' : (${s.stockStatus == 'OVER'} ? 'over' : 'normal')"
+                      th:text="${s.stockStatus}"></span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

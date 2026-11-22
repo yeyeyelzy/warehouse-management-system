@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('回料入库')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>回料入库</h2>
+    <div th:if="${success}" class="alert success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert error" th:text="${error}"></div>
+    <div th:if="${warning}" class="alert warning" th:text="${warning}"></div>
+    <p style="color:#888;font-size:13px;">复用通用入库存储过程 sp_inbound（biz_type=MATERIAL_RETURN），不额外开发独立存储流程。</p>
+    <form th:action="@{/biz/materialReturn}" method="post" class="grid">
+        <label>回料仓库</label>
+        <select name="warehouseId" required>
+            <option value="">请选择仓库</option>
+            <option th:each="w : ${warehouses}" th:value="${w.warehouseId}" th:text="${w.warehouseName}"></option>
+        </select>
+        <label>货品</label>
+        <select name="goodsId" required>
+            <option value="">请选择货品</option>
+            <option th:each="g : ${goodsList}" th:value="${g.goodsId}" th:text="${g.goodsName}"></option>
+        </select>
+        <label>回料数量</label><input type="number" step="0.01" name="quantity" required>
+        <label>回料单价</label><input type="number" step="0.01" name="unitPrice" required>
+        <label></label><button type="submit">确认回料</button>
+    </form>
+</div>
+</body>
+</html>

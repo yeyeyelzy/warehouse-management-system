@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">仓库管理系统</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<nav th:fragment="nav" class="nav">
+    <span class="brand">仓库管理系统</span>
+    <a th:href="@{/home}">主页</a>
+    <a th:href="@{/goods}">货品管理</a>
+    <a th:href="@{/biz/inbound}">采购入库</a>
+    <a th:href="@{/biz/outbound}">销售出库</a>
+    <a th:href="@{/biz/materialIssue}">领料出库</a>
+    <a th:href="@{/biz/materialReturn}">回料入库</a>
+    <a th:href="@{/biz/return}">退货处理</a>
+    <a th:href="@{/biz/stocktake}">库存盘点</a>
+    <a th:href="@{/biz/transfer}">仓库调拨</a>
+    <a th:href="@{/stock}">库存查询</a>
+    <a th:href="@{/warning}">库存预警</a>
+    <a th:href="@{/report}">统计报表</a>
+    <a th:href="@{/logout}">退出</a>
+</nav>
+</body>
+</html>

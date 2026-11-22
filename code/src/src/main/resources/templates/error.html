@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('操作失败')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>操作失败</h2>
+    <div class="alert error" th:text="${error}"></div>
+    <a href="javascript:history.back()">返回上一页</a>
+</div>
+</body>
+</html>

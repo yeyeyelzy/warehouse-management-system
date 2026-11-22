@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('采购入库')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>采购入库</h2>
+    <div th:if="${success}" class="alert success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert error" th:text="${error}"></div>
+    <div th:if="${warning}" class="alert warning" th:text="${warning}"></div>
+    <p style="color:#888;font-size:13px;">底层调用存储过程 sp_inbound（biz_type=PURCHASE），入库明细插入后由触发器自动累加库存。</p>
+    <form th:action="@{/biz/inbound}" method="post" class="grid">
+        <label>入库仓库</label>
+        <select name="warehouseId" required>
+            <option value="">请选择仓库</option>
+            <option th:each="w : ${warehouses}" th:value="${w.warehouseId}" th:text="${w.warehouseName}"></option>
+        </select>
+        <label>货品</label>
+        <select name="goodsId" required>
+            <option value="">请选择货品</option>
+            <option th:each="g : ${goodsList}" th:value="${g.goodsId}" th:text="${g.goodsName + '(' + g.costMethod + ')'}"></option>
+        </select>
+        <label>入库数量</label><input type="number" step="0.01" name="quantity" required>
+        <label>入库单价</label><input type="number" step="0.01" name="unitPrice" required>
+        <label>供应商</label>
+        <select name="supplierId">
+            <option value="">无</option>
+            <option th:each="s : ${suppliers}" th:value="${s.supplierId}" th:text="${s.supplierName}"></option>
+        </select>
+        <label></label><button type="submit">确认入库</button>
+    </form>
+</div>
+</body>
+</html>

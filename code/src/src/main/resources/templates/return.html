@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('退货处理')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>退货处理</h2>
+    <div th:if="${success}" class="alert success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert error" th:text="${error}"></div>
+    <div th:if="${warning}" class="alert warning" th:text="${warning}"></div>
+    <p style="color:#888;font-size:13px;">复用通用出入库存储过程，用 biz_type 区分：采购退货走 sp_outbound_cost(PURCHASE_RETURN)，销售退货走 sp_inbound(SALE_RETURN)。</p>
+    <form th:action="@{/biz/return}" method="post" class="grid">
+        <label>仓库</label>
+        <select name="warehouseId" required>
+            <option value="">请选择仓库</option>
+            <option th:each="w : ${warehouses}" th:value="${w.warehouseId}" th:text="${w.warehouseName}"></option>
+        </select>
+        <label>货品</label>
+        <select name="goodsId" required>
+            <option value="">请选择货品</option>
+            <option th:each="g : ${goodsList}" th:value="${g.goodsId}" th:text="${g.goodsName}"></option>
+        </select>
+        <label>退货类型</label>
+        <select name="returnType">
+            <option value="PURCHASE_RETURN">采购退货（出库）</option>
+            <option value="SALE_RETURN">销售退货（入库）</option>
+        </select>
+        <label>退货数量</label><input type="number" step="0.01" name="quantity" required>
+        <label>退货单价(销售退货)</label><input type="number" step="0.01" name="unitPrice">
+        <label></label><button type="submit">确认退货</button>
+    </form>
+</div>
+</body>
+</html>

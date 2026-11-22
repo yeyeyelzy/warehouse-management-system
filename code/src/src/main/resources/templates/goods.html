@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('货品管理')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>货品管理</h2>
+    <div th:if="${success}" class="alert success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert error" th:text="${error}"></div>
+
+    <form th:action="@{/goods/save}" method="post" class="grid">
+        <input type="hidden" name="goodsId" th:value="${goods.goodsId}">
+        <label>货品编码</label><input name="goodsCode" th:value="${goods.goodsCode}" required>
+        <label>货品名称</label><input name="goodsName" th:value="${goods.goodsName}" required>
+        <label>规格型号</label><input name="spec" th:value="${goods.spec}">
+        <label>计量单位</label><input name="unit" th:value="${goods.unit}" value="个">
+        <label>分类ID</label><input type="number" name="categoryId" th:value="${goods.categoryId}" required>
+        <label>计价方式</label>
+        <select name="costMethod">
+            <option value="FIFO" th:selected="${goods.costMethod == 'FIFO'}">FIFO 先进先出</option>
+            <option value="LIFO" th:selected="${goods.costMethod == 'LIFO'}">LIFO 后进先出</option>
+        </select>
+        <label>库存上限</label><input name="upperLimit" th:value="${goods.upperLimit}">
+        <label>库存下限</label><input name="lowerLimit" th:value="${goods.lowerLimit}">
+        <label>参考售价</label><input name="price" th:value="${goods.price}">
+        <label>状态(1启用)</label><input type="number" name="status" th:value="${goods.status}" value="1">
+        <label></label><button type="submit">保存货品</button>
+    </form>
+
+    <table>
+        <thead>
+        <tr><th>ID</th><th>编码</th><th>名称</th><th>规格</th><th>单位</th><th>计价方式</th><th>下限</th><th>上限</th><th>售价</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="g : ${goodsList}">
+            <td th:text="${g.goodsId}"></td>
+            <td th:text="${g.goodsCode}"></td>
+            <td th:text="${g.goodsName}"></td>
+            <td th:text="${g.spec}"></td>
+            <td th:text="${g.unit}"></td>
+            <td th:text="${g.costMethod}"></td>
+            <td th:text="${g.lowerLimit}"></td>
+            <td th:text="${g.upperLimit}"></td>
+            <td th:text="${g.price}"></td>
+            <td><span class="tag" th:classappend="${g.status == 1 ? 'normal' : 'low'}" th:text="${g.status == 1 ? '启用' : '停用'}"></span></td>
+            <td>
+                <a th:href="@{/goods/edit/{id}(id=${g.goodsId})}">编辑</a>
+                <form th:if="${g.status == 1}" th:action="@{/goods/disable/{id}(id=${g.goodsId})}" method="post" style="display:inline">
+                    <button type="submit" onclick="return confirm('确认停用该货品？')">停用</button>
+                </form>
+                <form th:if="${g.status == 0}" th:action="@{/goods/enable/{id}(id=${g.goodsId})}" method="post" style="display:inline">
+                    <button type="submit">启用</button>
+                </form>
+                <form th:action="@{/goods/delete/{id}(id=${g.goodsId})}" method="post" style="display:inline">
+                    <button type="submit" onclick="return confirm('确认删除该货品？删除后不可恢复')">删除</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

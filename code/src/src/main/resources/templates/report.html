@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('统计报表')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>统计报表</h2>
+
+    <h3>① 出入库总量汇总</h3>
+    <table>
+        <thead><tr><th>方向</th><th>单据数</th><th>数量</th><th>金额/成本</th></tr></thead>
+        <tbody>
+        <tr th:each="r : ${inout}">
+            <td th:text="${r.flow_type}"></td>
+            <td th:text="${r.orders}"></td>
+            <td th:text="${r.qty}"></td>
+            <td th:text="${r.amount}"></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>② 供应商供货金额统计</h3>
+    <table>
+        <thead><tr><th>供应商</th><th>入库单数</th><th>供货金额</th></tr></thead>
+        <tbody>
+        <tr th:each="s : ${supplierSupply}">
+            <td th:text="${s.supplier_name}"></td>
+            <td th:text="${s.orders}"></td>
+            <td th:text="${s.amount}"></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h3>③ 盘点盈亏汇总</h3>
+    <table>
+        <thead><tr><th>差异类型</th><th>记录数</th><th>差异数量合计</th></tr></thead>
+        <tbody>
+        <tr th:each="d : ${stocktakeDiff}">
+            <td th:text="${d.diff_type}"></td>
+            <td th:text="${d.cnt}"></td>
+            <td th:text="${d.total_diff}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

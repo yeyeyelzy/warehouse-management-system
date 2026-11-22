@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('主页')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<div class="container">
+    <h2>欢迎使用仓库管理系统</h2>
+    <p>当前登录用户：<span th:text="${user != null ? user.realName : ''}">—</span></p>
+    <p>本系统基于 <b>Java + Spring Boot + MyBatis + MySQL 8.0</b>，核心业务逻辑（FIFO/LIFO 成本核算、库存联动、事务回滚）下沉到 MySQL 存储过程、触发器与视图。</p>
+    <p>请从顶部导航进入各业务模块。</p>
+</div>
+</body>
+</html>
