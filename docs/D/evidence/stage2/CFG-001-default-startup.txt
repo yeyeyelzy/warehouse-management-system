@@ -1,0 +1,15 @@
+Date: 2026-11-23 (Asia/Shanghai)
+Target: Current project default startup path; no source file or .env file was read or modified.
+Baseline: main / d98629b07049fbd2dbae3162c0f9fec332cdc181
+
+Observed result:
+- mvn test: BUILD SUCCESS; no automated tests were present.
+- mvn spring-boot:run: Spring Boot started and port 8080 listened normally.
+- Correct-account login: failed; response was an operation-failure page.
+- Sanitized server cause: database authentication was rejected for the configured local account.
+
+Conclusion:
+- Application startup alone does not prove the default datasource configuration is usable.
+- This is recorded as BUG-CFG-001.
+
+No .env content, password, cookie, session identifier, or credential value is included.

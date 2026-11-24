@@ -1,0 +1,22 @@
+Date: 2026-11-22 (Asia/Shanghai)
+Scope: Local isolated database warehouse_c_lab only.
+Execution: C Initialize-Lab script with explicit local-lab reset confirmation and regression enabled.
+
+Database construction result:
+- 01_create_tables.sql: PASS
+- 02_create_views.sql: PASS
+- 03_create_triggers.sql: PASS
+- 04_create_procedures.sql: PASS
+- 05_test_and_verify.sql: PASS
+- 07-数据一致性验证.sql after initialization: PASS (0 anomaly rows)
+
+Seed-verification highlights:
+- FIFO outbound cost: 620.00
+- LIFO outbound cost: 650.00
+- Normal inbound/outbound, stocktake gain/loss and transfer seed calls: all returned status 0.
+
+SQL regression result:
+- 06_regression.sql C01--C18: all PASS.
+- Coverage includes insufficient outbound rollback, negative-count rejection, multi-line transfer rollback, stock/batch/alert consistency, FIFO transferred-cost continuity, low/over stock alert consistency, negative inbound-price rollback, fractional quantities and cost conservation.
+
+No credential, connection-string password, or user password value is retained in this evidence.

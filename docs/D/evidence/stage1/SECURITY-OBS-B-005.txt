@@ -1,0 +1,9 @@
+Date: 2026-11-22 (Asia/Shanghai)
+Observation: The current authentication flow selects the password field and compares it directly. MyBatis standard-output logging prints query result rows during login.
+
+Risk: Password fields can be exposed in application console logs, and the implementation does not meet the stated requirement for encrypted password storage.
+
+Classification: S2 security defect candidate; owner B.
+Required follow-up: Store password hashes, compare using a secure password verifier, exclude password fields from logged query output, and supply a frozen-commit regression result.
+
+This evidence intentionally contains no actual password or credential value.

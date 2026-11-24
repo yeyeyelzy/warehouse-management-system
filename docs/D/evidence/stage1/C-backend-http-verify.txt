@@ -1,0 +1,21 @@
+Date: 2026-11-22 (Asia/Shanghai)
+Target: Current project code, started with a process-local datasource override to the local isolated warehouse_c_lab database. No source file or .env file was changed.
+
+Backend HTTP verification result: PASS
+- Fresh HTTP fixture check: PASS
+- Login: PASS
+- Inbound: PASS
+- Outbound: PASS; displayed cost 10.00 in the fixture
+- Stocktake: PASS; displayed GAIN
+- Transfer: PASS; post-transfer quantities 27:6.00 and 28:14.00
+- Target-warehouse outbound after transfer: PASS; displayed cost 10.00
+- Insufficient outbound: PASS; rejected and order count unchanged
+- Negative stocktake: PASS; rejected
+- Insufficient transfer: PASS; rejected
+- Rejected-call state checks: stock 27:4.00 and 28:14.00; stock/transfer/stocktake counts unchanged; batch balances unchanged
+
+Final read-only check:
+- 07-数据一致性验证.sql anomaly rows: 0
+- Result: PASS
+
+No credential, cookie, session identifier, or password value is retained in this evidence.

@@ -1,0 +1,29 @@
+Timestamp: 2026-11-22 +08:00
+Base URL: http://127.0.0.1:8080
+Baseline commit: d98629b07049fbd2dbae3162c0f9fec332cdc181
+
+BASE-003 (anonymous GET /biz/inbound)
+- HTTP status after redirect: 200
+- Response classification: login form
+- Business page exposed: no
+- Result: PASS (unauthenticated access was redirected to login)
+
+BASE-001 (correct-account login)
+- HTTP status after response: 200
+- Response classification: operation-failure page
+- Server-side cause: database connection refused before credential verification
+- Result: BLOCKED
+
+BASE-002 (wrong-account login)
+- HTTP status after response: 200
+- Response classification: operation-failure page
+- Server-side cause: same database connection block before credential verification
+- Result: BLOCKED
+
+BASE-004 through BASE-010
+- Result: BLOCKED because a valid authenticated session could not be established.
+
+Notes:
+- HTTP 200 alone was not regarded as a pass; response content was classified.
+- No POST request was sent to a business transaction endpoint.
+- No database initialization, reset, or business-data mutation was performed.
