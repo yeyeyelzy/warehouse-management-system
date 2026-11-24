@@ -31,6 +31,10 @@ public class BusinessService {
      */
     public ProcedureResult inbound(Integer warehouseId, Integer goodsId, BigDecimal quantity,
                           BigDecimal unitPrice, Integer operatorId, Integer supplierId, String bizType) {
+        requireNotNull(warehouseId, "入库仓库");
+        requireNotNull(goodsId, "货品");
+        requirePositive(quantity, "入库数量");
+        requireNonNegative(unitPrice, "入库单价");
         Map<String, Object> params = new HashMap<>();
         params.put("warehouseId", warehouseId);
         params.put("goodsId", goodsId);
@@ -51,6 +55,9 @@ public class BusinessService {
      */
     public ProcedureResult outbound(Integer warehouseId, Integer goodsId, BigDecimal quantity,
                                     Integer operatorId, String bizType) {
+        requireNotNull(warehouseId, "出库仓库");
+        requireNotNull(goodsId, "货品");
+        requirePositive(quantity, "出库数量");
         Map<String, Object> params = new HashMap<>();
         params.put("warehouseId", warehouseId);
         params.put("goodsId", goodsId);
@@ -110,5 +117,23 @@ public class BusinessService {
             throw new BusinessException(statusMsg == null ? "业务处理失败" : statusMsg);
         }
         return result;
+    }
+
+    private void requireNotNull(Integer value, String name) {
+        if (value == null) {
+            throw new BusinessException(name + "不能为空");
+        }
+    }
+
+    private void requirePositive(BigDecimal value, String name) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(name + "必须大于0");
+        }
+    }
+
+    private void requireNonNegative(BigDecimal value, String name) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(name + "不能为负");
+        }
     }
 }

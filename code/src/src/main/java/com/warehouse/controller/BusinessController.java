@@ -132,8 +132,8 @@ public class BusinessController {
                                 @RequestParam BigDecimal quantity,
                                 HttpSession session, RedirectAttributes ra) {
         try {
-            businessService.outbound(warehouseId, goodsId, quantity, operatorId(session), "MATERIAL_ISSUE");
-            ra.addFlashAttribute("success", "领料出库成功");
+            ProcedureResult result = businessService.outbound(warehouseId, goodsId, quantity, operatorId(session), "MATERIAL_ISSUE");
+            ra.addFlashAttribute("success", "领料出库成功，出库成本 = " + result.getOutTotalCost());
             checkStockWarning(warehouseId, goodsId, ra);
         } catch (BusinessException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -181,8 +181,8 @@ public class BusinessController {
         try {
             if ("PURCHASE_RETURN".equals(returnType)) {
                 // 采购退货：出库方向
-                businessService.outbound(warehouseId, goodsId, quantity, operatorId(session), "PURCHASE_RETURN");
-                ra.addFlashAttribute("success", "采购退货出库成功");
+                ProcedureResult result = businessService.outbound(warehouseId, goodsId, quantity, operatorId(session), "PURCHASE_RETURN");
+                ra.addFlashAttribute("success", "采购退货出库成功，出库成本 = " + result.getOutTotalCost());
             } else {
                 // 销售退货：入库方向
                 BigDecimal price = unitPrice == null ? BigDecimal.ZERO : unitPrice;

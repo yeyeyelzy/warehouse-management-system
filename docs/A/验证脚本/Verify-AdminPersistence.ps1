@@ -60,14 +60,18 @@ try {
     $id = Read-LabDb "SELECT user_id $row"
     if ($id -notmatch '^\d+$') { throw 'Created account was not found.' }
     Assert-Value (Read-LabDb "SELECT CONCAT(real_name,':',role_id,':',status) $row") 'Verification Original:3:1' 'New account persisted with default enabled status'
+    $initialPasswordHash = Read-LabDb "SELECT password $row"
+    if ($initialPasswordHash -notmatch '^[0-9a-f]{32}:[0-9a-f]{64}$' -or $initialPasswordHash -eq 'LabOriginal42') {
+        throw 'New account password was not stored as a salted hash.'
+    }
     $null = New-LabSession $account LabOriginal42
 
     Send-Form /sys/user/update @{ userId=$id; username=$account; password=''; realName='Verification Updated'; roleId=4; status=0 } $admin /sys/user
-    Assert-Value (Read-LabDb "SELECT CONCAT(real_name,':',role_id,':',status,':',password='LabOriginal42') $row") 'Verification Updated:4:0:1' 'Update persisted name, role and status with password unchanged'
+    Assert-Value (Read-LabDb "SELECT CONCAT(real_name,':',role_id,':',status,':',password='$initialPasswordHash') $row") 'Verification Updated:4:0:1' 'Update persisted name, role and status with password hash unchanged'
     $null = New-LabSession $account LabOriginal42 /login
 
     Send-Form /sys/user/update @{ userId=$id; username=$account; password='LabUpdated42'; realName='Verification Updated'; roleId=4; status=1 } $admin /sys/user
-    Assert-Value (Read-LabDb "SELECT CONCAT(status,':',password='LabUpdated42') $row") '1:1' 'New password and enabled status persisted'
+    Assert-Value (Read-LabDb "SELECT CONCAT(status,':',password<>'$initialPasswordHash',':',password NOT IN ('LabOriginal42','LabUpdated42'),':',password REGEXP '^[0-9a-f]{32}:[0-9a-f]{64}$') $row") '1:1:1:1' 'New password is persisted as a changed salted hash'
     $null = New-LabSession $account LabOriginal42 /login
     $null = New-LabSession $account LabUpdated42
 

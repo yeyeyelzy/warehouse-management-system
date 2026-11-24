@@ -28,9 +28,9 @@ WHERE (r.role_id = 1 AND p.permission_code IN ('goods:manage', 'biz:inbound', 'b
    OR (r.role_id = 3 AND p.permission_code IN ('biz:inbound','biz:purchaseReturn','stock:view'))
    OR (r.role_id = 4 AND p.permission_code IN ('biz:apply','biz:materialReturn','stock:view'));
 INSERT INTO sys_user (username,password,real_name,role_id,status)
-VALUES ('lab_admin','123456','实验系统管理员',1,1),
-       ('lab_keeper','123456','实验仓库管理员',2,1),
-       ('lab_buyer','123456','实验采购人员',3,1),
-       ('lab_requester','123456','实验领料人员',4,1)
-ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
+VALUES ('lab_admin',CONCAT('000000000000000000000000000000a1:', SHA2(CONCAT('000000000000000000000000000000a1','123456'),256)),'实验系统管理员',1,1),
+       ('lab_keeper',CONCAT('000000000000000000000000000000a2:', SHA2(CONCAT('000000000000000000000000000000a2','123456'),256)),'实验仓库管理员',2,1),
+       ('lab_buyer',CONCAT('000000000000000000000000000000a3:', SHA2(CONCAT('000000000000000000000000000000a3','123456'),256)),'实验采购人员',3,1),
+       ('lab_requester',CONCAT('000000000000000000000000000000a4:', SHA2(CONCAT('000000000000000000000000000000a4','123456'),256)),'实验领料人员',4,1)
+ON DUPLICATE KEY UPDATE password = VALUES(password), real_name = VALUES(real_name), role_id = VALUES(role_id), status = VALUES(status);
 COMMIT;

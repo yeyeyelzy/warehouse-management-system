@@ -3,6 +3,7 @@ package com.warehouse.service;
 import com.warehouse.entity.SysUser;
 import com.warehouse.mapper.SysUserMapper;
 import com.warehouse.util.BusinessException;
+import com.warehouse.util.PasswordUtil;
 import org.springframework.stereotype.Service;
 import java.util.Set;
 
@@ -32,9 +33,10 @@ public class AuthService {
         if(Integer.valueOf(0).equals(user.getStatus())){
             throw new BusinessException("该账号已被禁用，禁止登录");
         }
-        if (!user.getPassword().equals(password)) {
+        if (!PasswordUtil.matches(password, user.getPassword())) {
             throw new BusinessException("密码错误");
         }
+        user.setPassword(null);
         return user;
     }
 

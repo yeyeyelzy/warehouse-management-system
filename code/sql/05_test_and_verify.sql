@@ -68,7 +68,13 @@ FROM nums WHERE n <= 30;
 
 -- 用户表 30 行（角色循环 1~3）
 INSERT INTO sys_user (user_id, username, password, real_name, role_id, status)
-SELECT n, CONCAT('user', LPAD(n,2,'0')), '123456', CONCAT('用户', n), ((n-1)%3)+1, 1
+SELECT n,
+       CONCAT('user', LPAD(n,2,'0')),
+       CONCAT(LOWER(LPAD(HEX(n), 32, '0')), ':',
+              SHA2(CONCAT(LOWER(LPAD(HEX(n), 32, '0')), '123456'), 256)),
+       CONCAT('用户', n),
+       ((n-1)%3)+1,
+       1
 FROM nums WHERE n <= 30;
 
 -- 货品分类表 30 行
