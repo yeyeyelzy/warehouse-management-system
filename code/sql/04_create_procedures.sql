@@ -28,6 +28,7 @@ DROP PROCEDURE IF EXISTS sp_inbound;
 DROP PROCEDURE IF EXISTS sp_outbound_cost;
 DROP PROCEDURE IF EXISTS sp_stocktake;
 DROP PROCEDURE IF EXISTS sp_transfer;
+DROP PROCEDURE IF EXISTS sp_consume_stock_batches;
 
 DELIMITER $$
 
@@ -81,6 +82,10 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '入库数量必须大于0';
     END IF;
 
+    IF p_unit_price IS NULL OR p_unit_price < 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '入库单价必须大于或等于0';
+    END IF;
+
     SET v_amount   = p_quantity * p_unit_price;
     SET v_order_no = CONCAT('IN', DATE_FORMAT(NOW(6), '%Y%m%d%H%i%s%f'));
 
@@ -95,8 +100,8 @@ BEGIN
     SET v_item_id = LAST_INSERT_ID();
 
     -- 3. 写入成本批次（供 FIFO/LIFO 出库成本核算使用）
-    INSERT INTO stock_batch (warehouse_id, goods_id, inbound_item_id, batch_no, quantity, unit_cost, inbound_date)
-    VALUES (p_warehouse_id, p_goods_id, v_item_id, v_order_no, p_quantity, p_unit_price, CURDATE());
+    INSERT INTO stock_batch (warehouse_id, goods_id, inbound_item_id, batch_no, quantity, unit_cost, remaining_cost, inbound_date)
+    VALUES (p_warehouse_id, p_goods_id, v_item_id, v_order_no, p_quantity, p_unit_price, v_amount, CURDATE());
 
     COMMIT;
     SET p_status_code = 0;
@@ -140,22 +145,24 @@ BEGIN
     DECLARE v_batch_id    INT UNSIGNED;
     DECLARE v_batch_qty   DECIMAL(12,2);
     DECLARE v_batch_cost  DECIMAL(12,2);
+    DECLARE v_used_cost   DECIMAL(12,2);
     DECLARE v_use_qty     DECIMAL(12,2);
     DECLARE v_total_cost  DECIMAL(12,2) DEFAULT 0;
     DECLARE v_unit_cost   DECIMAL(12,2);
     DECLARE v_is_lifo     TINYINT DEFAULT 0;
+    DECLARE v_stock_qty   DECIMAL(12,2);
     DECLARE done INT DEFAULT 0;
 
     -- FIFO 游标：入库日期升序（先进先出）
     DECLARE cur_fifo CURSOR FOR
-        SELECT batch_id, quantity, unit_cost
+        SELECT batch_id, quantity, remaining_cost
         FROM stock_batch
         WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id AND quantity > 0
         ORDER BY inbound_date ASC, batch_id ASC;
 
     -- LIFO 游标：入库日期降序（后进先出）
     DECLARE cur_lifo CURSOR FOR
-        SELECT batch_id, quantity, unit_cost
+        SELECT batch_id, quantity, remaining_cost
         FROM stock_batch
         WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id AND quantity > 0
         ORDER BY inbound_date DESC, batch_id DESC;
@@ -174,6 +181,9 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '出库数量必须大于0';
     END IF;
 
+    SET v_stock_qty = COALESCE((SELECT quantity FROM stock
+        WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id FOR UPDATE), 0);
+
     -- 读取计价方式
     SELECT cost_method INTO v_cost_method FROM goods WHERE goods_id = p_goods_id;
     IF v_cost_method = 'LIFO' THEN
@@ -185,7 +195,7 @@ BEGIN
     FROM stock_batch
     WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id AND quantity > 0;
 
-    IF v_available < p_quantity THEN
+    IF LEAST(v_available, v_stock_qty) < p_quantity THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '库存不足，无法出库';
     END IF;
 
@@ -217,12 +227,15 @@ BEGIN
             SET v_use_qty = v_batch_qty;
         END IF;
 
-        SET v_total_cost = v_total_cost + v_use_qty * v_batch_cost;
+        -- 按批次剩余成本分摊，取完本批时结清尾差。
+        SET v_used_cost = ROUND(v_batch_cost * v_use_qty / v_batch_qty, 2);
+        SET v_total_cost = v_total_cost + v_used_cost;
         SET v_remain     = v_remain - v_use_qty;
 
         -- 扣减批次剩余数量
         UPDATE stock_batch
-        SET quantity = quantity - v_use_qty
+        SET quantity = quantity - v_use_qty,
+            remaining_cost = remaining_cost - v_used_cost
         WHERE batch_id = v_batch_id;
 
         IF v_remain <= 0 THEN
@@ -261,13 +274,71 @@ BEGIN
     SET p_out_total_cost = v_total_cost;
 END$$
 
+-- 调拨/盘亏按货品计价顺序扣批次。由调用方持有库存行锁并管理事务。
+CREATE PROCEDURE sp_consume_stock_batches(
+    IN p_source INT UNSIGNED,
+    IN p_target INT UNSIGNED,
+    IN p_goods INT UNSIGNED,
+    IN p_quantity DECIMAL(12,2),
+    OUT p_cost DECIMAL(12,2)
+)
+BEGIN
+    DECLARE v_lifo BOOLEAN DEFAULT FALSE;
+    DECLARE v_remaining DECIMAL(12,2);
+    DECLARE v_batch_id INT UNSIGNED;
+    DECLARE v_item_id INT UNSIGNED;
+    DECLARE v_batch_no VARCHAR(50);
+    DECLARE v_date DATE;
+    DECLARE v_quantity DECIMAL(12,2);
+    DECLARE v_unit_cost DECIMAL(12,2);
+    DECLARE v_used DECIMAL(12,2);
+    DECLARE v_batch_cost DECIMAL(12,2);
+    DECLARE v_used_cost DECIMAL(12,2);
+    DECLARE v_cost DECIMAL(12,2) DEFAULT 0;
+    DECLARE v_done BOOLEAN DEFAULT FALSE;
+
+    DECLARE batches CURSOR FOR
+        SELECT batch_id, inbound_item_id, batch_no, inbound_date, quantity, unit_cost, remaining_cost
+        FROM stock_batch
+        WHERE warehouse_id = p_source AND goods_id = p_goods AND quantity > 0
+        ORDER BY CASE WHEN NOT v_lifo THEN inbound_date END ASC,
+                 CASE WHEN NOT v_lifo THEN batch_id END ASC,
+                 CASE WHEN v_lifo THEN inbound_date END DESC,
+                 CASE WHEN v_lifo THEN batch_id END DESC
+        FOR UPDATE;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
+
+    SET v_lifo = (SELECT cost_method = 'LIFO' FROM goods WHERE goods_id = p_goods);
+    SET v_remaining = p_quantity;
+    OPEN batches;
+    WHILE v_remaining > 0 DO
+        FETCH batches INTO v_batch_id, v_item_id, v_batch_no, v_date, v_quantity, v_unit_cost, v_batch_cost;
+        IF v_done THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '成本批次不足';
+        END IF;
+        SET v_used = LEAST(v_remaining, v_quantity);
+        SET v_used_cost = ROUND(v_batch_cost * v_used / v_quantity, 2);
+        UPDATE stock_batch
+        SET quantity = quantity - v_used, remaining_cost = remaining_cost - v_used_cost
+        WHERE batch_id = v_batch_id;
+        IF p_target IS NOT NULL THEN
+            INSERT INTO stock_batch (warehouse_id, goods_id, inbound_item_id, batch_no, quantity, unit_cost, remaining_cost, inbound_date)
+            VALUES (p_target, p_goods, v_item_id, v_batch_no, v_used, v_unit_cost, v_used_cost, v_date);
+        END IF;
+        SET v_cost = v_cost + v_used_cost;
+        SET v_remaining = v_remaining - v_used;
+    END WHILE;
+    CLOSE batches;
+    SET p_cost = ROUND(v_cost, 2);
+END$$
+
 -- ============================================================
 -- 【③ 库存盘点存储过程 sp_stocktake】
 -- 业务流程：
 --   1) 读取账面库存数量与占用资金；
 --   2) 计算差异(实盘-账面)，判定 GAIN(盘盈)/LOSS(盘亏)/NONE；
 --   3) 生成盘点单主表 + 盘点明细（盘点记录表 stocktake_order/stocktake_item）；
---   4) 按平均成本修正 stock 数量与占用资金；
+--   4) 盘盈按参考成本新增批次，盘亏按计价顺序扣批次；
 --   5) 事务异常整体回滚。
 -- 参数说明：
 --   IN  p_warehouse_id    盘点仓库编号
@@ -291,6 +362,7 @@ BEGIN
     DECLARE v_avg_cost    DECIMAL(12,2) DEFAULT 0;
     DECLARE v_diff        DECIMAL(12,2);
     DECLARE v_diff_type   VARCHAR(10);
+    DECLARE v_adjustment_cost DECIMAL(12,2) DEFAULT 0;
     DECLARE v_stocktake_id INT UNSIGNED;
     DECLARE v_order_no    VARCHAR(50);
 
@@ -308,7 +380,7 @@ BEGIN
     END IF;
 
     -- 读取账面库存
-    SET v_book_qty   = COALESCE((SELECT quantity   FROM stock WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id), 0);
+    SET v_book_qty   = COALESCE((SELECT quantity   FROM stock WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id FOR UPDATE), 0);
     SET v_total_cost = COALESCE((SELECT total_cost FROM stock WHERE warehouse_id = p_warehouse_id AND goods_id = p_goods_id), 0);
 
     SET v_diff = p_actual_quantity - v_book_qty;
@@ -337,12 +409,21 @@ BEGIN
     INSERT INTO stocktake_item (stocktake_id, goods_id, book_quantity, actual_quantity, diff_quantity, diff_type)
     VALUES (v_stocktake_id, p_goods_id, v_book_qty, p_actual_quantity, v_diff, v_diff_type);
 
+    IF v_diff > 0 THEN
+        SET v_adjustment_cost = ROUND(v_diff * v_avg_cost, 2);
+        INSERT INTO stock_batch (warehouse_id, goods_id, inbound_item_id, batch_no, quantity, unit_cost, remaining_cost, inbound_date)
+        VALUES (p_warehouse_id, p_goods_id, NULL, v_order_no, v_diff, v_avg_cost, v_adjustment_cost, CURDATE());
+    ELSEIF v_diff < 0 THEN
+        CALL sp_consume_stock_batches(p_warehouse_id, NULL, p_goods_id, ABS(v_diff), v_adjustment_cost);
+        SET v_adjustment_cost = -v_adjustment_cost;
+    END IF;
+
     -- 修正库存数量与占用资金（无行则插入）
     INSERT INTO stock (warehouse_id, goods_id, quantity, total_cost)
-    VALUES (p_warehouse_id, p_goods_id, p_actual_quantity, p_actual_quantity * v_avg_cost)
+    VALUES (p_warehouse_id, p_goods_id, p_actual_quantity, IF(p_actual_quantity = 0, 0, v_total_cost + v_adjustment_cost))
     ON DUPLICATE KEY UPDATE
         quantity   = p_actual_quantity,
-        total_cost = p_actual_quantity * v_avg_cost;
+        total_cost = IF(p_actual_quantity = 0, 0, v_total_cost + v_adjustment_cost);
 
     COMMIT;
     SET p_status_code = 0;
@@ -379,16 +460,18 @@ BEGIN
     DECLARE v_goods_id    INT UNSIGNED;
     DECLARE v_quantity    DECIMAL(12,2);
     DECLARE v_available   DECIMAL(12,2);
-    DECLARE v_avg_cost    DECIMAL(12,2);
+    DECLARE v_transfer_cost DECIMAL(12,2);
     DECLARE done INT DEFAULT 0;
 
     -- 解析 JSON 明细为游标
     DECLARE cur CURSOR FOR
         SELECT jt.goods_id, jt.quantity
         FROM JSON_TABLE(p_items, '$[*]' COLUMNS(
+            item_position FOR ORDINALITY,
             goods_id INT PATH '$.goods_id',
             quantity DECIMAL(12,2) PATH '$.quantity'
-        )) AS jt;
+        )) AS jt
+        ORDER BY jt.item_position;
 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -404,7 +487,7 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '调出仓库与调入仓库不能相同';
     END IF;
 
-    IF p_items IS NULL OR JSON_LENGTH(p_items) = 0 THEN
+    IF p_items IS NULL OR JSON_TYPE(p_items) <> 'ARRAY' OR JSON_LENGTH(p_items) = 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '调拨明细不能为空';
     END IF;
 
@@ -422,31 +505,28 @@ BEGIN
             LEAVE read_loop;
         END IF;
 
-        IF v_quantity IS NULL OR v_quantity <= 0 THEN
+        IF v_goods_id IS NULL OR v_quantity IS NULL OR v_quantity <= 0 THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '调拨数量必须大于0';
         END IF;
 
         -- 校验源仓库库存
-        SET v_available = COALESCE((SELECT quantity FROM stock WHERE warehouse_id = p_from_warehouse_id AND goods_id = v_goods_id), 0);
+        SET v_available = COALESCE((SELECT quantity FROM stock WHERE warehouse_id = p_from_warehouse_id AND goods_id = v_goods_id FOR UPDATE), 0);
         IF v_available < v_quantity THEN
             SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '源仓库库存不足，无法调拨';
         END IF;
 
-        -- 源仓库平均成本
-        SET v_avg_cost = COALESCE((SELECT total_cost / NULLIF(quantity, 0) FROM stock WHERE warehouse_id = p_from_warehouse_id AND goods_id = v_goods_id), 0);
+        CALL sp_consume_stock_batches(p_from_warehouse_id, p_to_warehouse_id, v_goods_id, v_quantity, v_transfer_cost);
 
-        -- 扣减源仓库
         UPDATE stock
-        SET quantity   = quantity - v_quantity,
-            total_cost = total_cost - v_quantity * v_avg_cost
+        SET total_cost = IF(quantity = v_quantity, 0, total_cost - v_transfer_cost),
+            quantity   = quantity - v_quantity
         WHERE warehouse_id = p_from_warehouse_id AND goods_id = v_goods_id;
 
-        -- 增加目标仓库（无行则插入）
         INSERT INTO stock (warehouse_id, goods_id, quantity, total_cost)
-        VALUES (p_to_warehouse_id, v_goods_id, v_quantity, v_quantity * v_avg_cost)
+        VALUES (p_to_warehouse_id, v_goods_id, v_quantity, v_transfer_cost)
         ON DUPLICATE KEY UPDATE
             quantity   = quantity + v_quantity,
-            total_cost = total_cost + v_quantity * v_avg_cost;
+            total_cost = total_cost + v_transfer_cost;
 
         -- 写入调拨明细
         INSERT INTO transfer_item (transfer_id, goods_id, quantity)

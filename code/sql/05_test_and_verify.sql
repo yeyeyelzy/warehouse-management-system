@@ -5,7 +5,7 @@
 --   - 每张基础实体表 >= 30 条（角色/用户/分类/供应商/仓库/货品）
 --   - 入库/出库/盘点/调拨 明细关联记录合计 >= 200 条
 -- 内容：
---   [0] 可选清理（TRUNCATE，支持反复调试）
+--   [0] 清理实验数据（TRUNCATE，支持反复调试）
 --   [1] 批量插入基础数据（单表 >= 30 行）
 --   [2] 批量采购入库单据（主表+明细+成本批次）
 --   [3] 调用 4 个存储过程覆盖全部业务场景
@@ -19,7 +19,7 @@ USE warehouse_db;
 SET SQL_SAFE_UPDATES = 0;
 
 -- ============================================================
--- [0] 可选数据清理（保留旧数据时可将本节注释掉）
+-- [0] 清理实验数据（仅对可清空的 warehouse_db 执行）
 -- ============================================================
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE stock_alert;
@@ -115,7 +115,7 @@ SELECT n,
 FROM nums WHERE n <= 90;
 
 -- 成本批次 90 行（供 FIFO/LIFO 出库核算）
-INSERT INTO stock_batch (batch_id, warehouse_id, goods_id, inbound_item_id, batch_no, quantity, unit_cost, inbound_date)
+INSERT INTO stock_batch (batch_id, warehouse_id, goods_id, inbound_item_id, batch_no, quantity, unit_cost, remaining_cost, inbound_date)
 SELECT n,
        ((FLOOR((n-1)/3))%3)+1,
        ((n-1)%30)+1,
@@ -123,7 +123,8 @@ SELECT n,
        CONCAT('IN', LPAD(FLOOR((n-1)/3)+1, 4, '0')),
        10 * (((n-1)%3)+1),
        5.00 + ((n-1)%3),
-       CURDATE()
+       (10 * (((n-1)%3)+1)) * (5.00 + ((n-1)%3)),
+       DATE(DATE_SUB(NOW(), INTERVAL (60 - (FLOOR((n-1)/3)+1)) DAY))
 FROM nums WHERE n <= 90;
 
 -- 回填入库单总金额（供供应商供货金额统计）
@@ -136,27 +137,42 @@ WHERE o.inbound_id > 0;
 -- ============================================================
 
 -- 3.1 货品入库 sp_inbound（正常采购 / 销售退货 / 回料）
-CALL sp_inbound(1, 1, 100, 5.00, 1, 1, 'PURCHASE',        @c, @m);   -- 正常采购入库
-CALL sp_inbound(1, 1, 50,  6.00, 1, 1, 'PURCHASE',        @c, @m);   -- 第二批（FIFO 批次）
-CALL sp_inbound(1, 2, 100, 5.00, 1, 1, 'PURCHASE',        @c, @m);   -- LIFO 货品第一批
-CALL sp_inbound(1, 2, 50,  6.00, 1, 1, 'PURCHASE',        @c, @m);   -- LIFO 货品第二批
-CALL sp_inbound(1, 3, 40,  4.00, 1, 1, 'SALE_RETURN',     @c, @m);   -- 销售退货入库
-CALL sp_inbound(1, 4, 30,  3.00, 1, 1, 'MATERIAL_RETURN', @c, @m);   -- 回料入库
+CALL sp_inbound(4, 1, 100, 5.00, 1, 1, 'PURCHASE',        @c, @m);   -- 正常采购入库
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_inbound(4, 1, 50,  6.00, 1, 1, 'PURCHASE',        @c, @m);   -- 第二批（FIFO 批次）
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_inbound(4, 2, 100, 5.00, 1, 1, 'PURCHASE',        @c, @m);   -- LIFO 货品第一批
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_inbound(4, 2, 50,  6.00, 1, 1, 'PURCHASE',        @c, @m);   -- LIFO 货品第二批
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_inbound(4, 3, 40,  4.00, 1, 1, 'SALE_RETURN',     @c, @m);   -- 销售退货入库
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_inbound(4, 4, 30,  3.00, 1, 1, 'MATERIAL_RETURN', @c, @m);   -- 回料入库
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
 
 -- 3.2 出库成本核算 sp_outbound_cost（FIFO / LIFO / 采购退货 / 领料）
-CALL sp_outbound_cost(1, 1, 120, 1, 'SALE',            @c, @m, @cost); -- FIFO：100*5+20*6=620
-CALL sp_outbound_cost(1, 2, 120, 1, 'SALE',            @c, @m, @cost); -- LIFO：50*6+70*5=650
-CALL sp_outbound_cost(1, 3, 10,  1, 'PURCHASE_RETURN', @c, @m, @cost); -- 采购退货出库
-CALL sp_outbound_cost(1, 4, 15,  1, 'MATERIAL_ISSUE',  @c, @m, @cost); -- 领料出库
+CALL sp_outbound_cost(4, 1, 120, 1, 'SALE',            @c, @m, @cost); -- FIFO：100*5+20*6=620
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message, @cost AS cost;
+CALL sp_outbound_cost(4, 2, 120, 1, 'SALE',            @c, @m, @cost); -- LIFO：50*6+70*5=650
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message, @cost AS cost;
+CALL sp_outbound_cost(4, 3, 10,  1, 'PURCHASE_RETURN', @c, @m, @cost); -- 采购退货出库
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message, @cost AS cost;
+CALL sp_outbound_cost(4, 4, 15,  1, 'MATERIAL_ISSUE',  @c, @m, @cost); -- 领料出库
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message, @cost AS cost;
 
 -- 3.3 库存盘点 sp_stocktake（盘盈 / 盘亏 / 一般盘点）
 CALL sp_stocktake(1, 5, 500, 1, @c, @m);   -- 盘盈（实际远大于账面）
-CALL sp_stocktake(1, 6, 0,   1, @c, @m);   -- 盘亏（账面>0，实盘0）
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_stocktake(4, 4, 0,   1, @c, @m);   -- 盘亏（账面>0，实盘0）
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
 CALL sp_stocktake(1, 7, 20,  1, @c, @m);   -- 一般盘点
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
 
 -- 3.4 批量调拨 sp_transfer（跨仓库，多货品 JSON）
-CALL sp_transfer(1, 2, 1, '[{"goods_id":1,"quantity":10},{"goods_id":2,"quantity":5},{"goods_id":3,"quantity":8}]', @c, @m);
-CALL sp_transfer(1, 3, 1, '[{"goods_id":5,"quantity":6},{"goods_id":6,"quantity":4}]', @c, @m);
+CALL sp_transfer(4, 2, 1, '[{"goods_id":1,"quantity":10},{"goods_id":2,"quantity":5},{"goods_id":3,"quantity":8}]', @c, @m);
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
+CALL sp_transfer(1, 3, 1, '[{"goods_id":5,"quantity":6}]', @c, @m);
+SELECT 'C_SEED_CALL', @c AS status_code, @m AS status_message;
 
 -- ============================================================
 -- [4] 验证查询

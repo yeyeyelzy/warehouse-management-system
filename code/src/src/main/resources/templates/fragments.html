@@ -10,17 +10,19 @@
 <nav th:fragment="nav" class="nav">
     <span class="brand">仓库管理系统</span>
     <a th:href="@{/home}">主页</a>
-    <a th:href="@{/goods}">货品管理</a>
-    <a th:href="@{/biz/inbound}">采购入库</a>
-    <a th:href="@{/biz/outbound}">销售出库</a>
-    <a th:href="@{/biz/materialIssue}">领料出库</a>
-    <a th:href="@{/biz/materialReturn}">回料入库</a>
-    <a th:href="@{/biz/return}">退货处理</a>
-    <a th:href="@{/biz/stocktake}">库存盘点</a>
-    <a th:href="@{/biz/transfer}">仓库调拨</a>
-    <a th:href="@{/stock}">库存查询</a>
-    <a th:href="@{/warning}">库存预警</a>
-    <a th:href="@{/report}">统计报表</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('goods:manage')}" th:href="@{/goods}">货品管理</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:inbound')}" th:href="@{/biz/inbound}">采购入库</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:outbound')}" th:href="@{/biz/outbound}">销售出库</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:apply')}" th:href="@{/biz/materialIssue}">领料出库</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:materialReturn')}" th:href="@{/biz/materialReturn}">回料入库</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:purchaseReturn')}" th:href="@{/biz/return}">退货处理</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:check')}" th:href="@{/biz/stocktake}">库存盘点</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:transfer')}" th:href="@{/biz/transfer}">仓库调拨</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('stock:view')}" th:href="@{/stock}">库存查询</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('biz:warning')}" th:href="@{/warning}">库存预警</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('report:view')}" th:href="@{/report}">统计报表</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('user:manage')}" th:href="@{/sys/user}">用户管理</a>
+    <a th:if="${session.permissionCodes != null and session.permissionCodes.contains('role:assign')}" th:href="@{/sys/role}">权限管理</a>
     <a th:href="@{/logout}">退出</a>
 </nav>
 </body>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('权限管理')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<main class="container">
+    <h1>权限管理</h1><p>用户管理与角色权限分配由系统管理员持有。此处可调整业务权限。</p>
+    <p th:if="${msg}" th:text="${msg}"></p>
+    <form th:each="role : ${roleList}" method="post" th:action="@{/sys/role/save}">
+        <fieldset>
+            <legend th:text="${role.role_name}"></legend>
+            <input name="roleId" type="hidden" th:value="${role.role_id}">
+            <label th:each="perm : ${permList}">
+                <input type="checkbox" name="permissionIds" th:value="${perm.permission_id}"
+                       th:checked="${grants[role.role_id.toString()] != null and grants[role.role_id.toString()].contains(perm.permission_id.toString())}">
+                <span th:text="${perm.permission_name}"></span>
+            </label>
+            <button type="submit">保存权限</button>
+        </fieldset>
+    </form>
+</main>
+</body>
+</html>

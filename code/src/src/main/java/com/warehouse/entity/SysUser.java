@@ -12,4 +12,5 @@ public class SysUser {
     private String password;
     private String realName;
     private Integer roleId;
+    private Integer status; // 1启用 0禁用
 }

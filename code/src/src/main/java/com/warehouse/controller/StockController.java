@@ -1,5 +1,6 @@
 package com.warehouse.controller;
 
+import com.warehouse.util.RequirePermission;
 import com.warehouse.service.StockService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,20 +12,18 @@ import org.springframework.web.bind.annotation.RequestParam;
  */
 @Controller
 public class StockController {
-
     private final StockService stockService;
-
     public StockController(StockService stockService) {
         this.stockService = stockService;
     }
-
     @GetMapping("/stock")
+    @RequirePermission("stock:view")
     public String stock(Model model) {
         model.addAttribute("stockList", stockService.stockOverview());
         return "stock";
     }
-
     @GetMapping("/warning")
+    @RequirePermission("biz:warning")
     public String warning(@RequestParam(defaultValue = "realtime") String tab, Model model) {
         model.addAttribute("activeTab", tab);
         if ("records".equals(tab)) {
@@ -34,8 +33,8 @@ public class StockController {
         }
         return "warning";
     }
-
     @GetMapping("/report")
+    @RequirePermission("report:view")
     public String report(Model model) {
         model.addAttribute("inout", stockService.inoutSummary());
         model.addAttribute("supplierSupply", stockService.supplierSupply());

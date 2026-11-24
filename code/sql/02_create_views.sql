@@ -160,7 +160,7 @@ SELECT
     g.cost_method,
     b.quantity AS remain_quantity,
     b.unit_cost,
-    ROUND(b.quantity * b.unit_cost, 2) AS remain_cost,
+    b.remaining_cost AS remain_cost,
     b.inbound_date
 FROM stock_batch b
 JOIN goods g ON b.goods_id = g.goods_id
@@ -231,7 +231,7 @@ ORDER BY supply_amount DESC;
 -- ------------------------------------------------------------
 SELECT
     DATE_FORMAT(b.inbound_date, '%Y-%m') AS month,
-    SUM(b.quantity * b.unit_cost)         AS occupied_capital
+    SUM(b.remaining_cost)         AS occupied_capital
 FROM stock_batch b
 WHERE b.quantity > 0
 GROUP BY DATE_FORMAT(b.inbound_date, '%Y-%m')

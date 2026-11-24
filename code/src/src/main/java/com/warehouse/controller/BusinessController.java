@@ -1,5 +1,6 @@
 package com.warehouse.controller;
 
+import com.warehouse.util.RequirePermission;
 import com.warehouse.entity.SysUser;
 import com.warehouse.mapper.GoodsMapper;
 import com.warehouse.mapper.SupplierMapper;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
 import javax.servlet.http.HttpSession;
 import java.math.BigDecimal;
 
@@ -25,13 +25,11 @@ import java.math.BigDecimal;
 @Controller
 @RequestMapping("/biz")
 public class BusinessController {
-
     private final BusinessService businessService;
     private final WarehouseMapper warehouseMapper;
     private final GoodsMapper goodsMapper;
     private final SupplierMapper supplierMapper;
     private final StockService stockService;
-
     public BusinessController(BusinessService businessService,
                               WarehouseMapper warehouseMapper,
                               GoodsMapper goodsMapper,
@@ -43,19 +41,16 @@ public class BusinessController {
         this.supplierMapper = supplierMapper;
         this.stockService = stockService;
     }
-
     /** 公共下拉数据 */
     private void addOptions(Model model) {
         model.addAttribute("warehouses", warehouseMapper.list());
         model.addAttribute("goodsList", goodsMapper.listActive());
         model.addAttribute("suppliers", supplierMapper.list());
     }
-
     private Integer operatorId(HttpSession session) {
         Object user = session.getAttribute("loginUser");
         return user instanceof SysUser ? ((SysUser) user).getUserId() : 1;
     }
-
     /** 出入库后检查库存是否超储/短缺，越界则添加提示 */
     private void checkStockWarning(Integer warehouseId, Integer goodsId, RedirectAttributes ra) {
         String status = stockService.getStockStatus(warehouseId, goodsId);
@@ -65,7 +60,6 @@ public class BusinessController {
             ra.addFlashAttribute("warning", "提示：该货品库存已高于上限，请注意超储！");
         }
     }
-
     /** 调拨后检查：调出仓可能短缺、调入仓可能超储 */
     private void checkTransferWarning(Integer fromWarehouseId, Integer toWarehouseId, Integer goodsId, RedirectAttributes ra) {
         String fromStatus = stockService.getStockStatus(fromWarehouseId, goodsId);
@@ -78,15 +72,15 @@ public class BusinessController {
             ra.addFlashAttribute("warning", "提示：调入仓库该货品库存已高于上限，请注意超储！");
         }
     }
-
     // ============ 采购入库 ============
     @GetMapping("/inbound")
+    @RequirePermission("biz:inbound")
     public String inboundPage(Model model) {
         addOptions(model);
         return "inbound";
     }
-
     @PostMapping("/inbound")
+    @RequirePermission("biz:inbound")
     public String inbound(@RequestParam Integer warehouseId,
                           @RequestParam Integer goodsId,
                           @RequestParam BigDecimal quantity,
@@ -102,15 +96,15 @@ public class BusinessController {
         }
         return "redirect:/biz/inbound";
     }
-
     // ============ 销售出库（FIFO/LIFO 成本核算） ============
     @GetMapping("/outbound")
+    @RequirePermission("biz:outbound")
     public String outboundPage(Model model) {
         addOptions(model);
         return "outbound";
     }
-
     @PostMapping("/outbound")
+    @RequirePermission("biz:outbound")
     public String outbound(@RequestParam Integer warehouseId,
                            @RequestParam Integer goodsId,
                            @RequestParam BigDecimal quantity,
@@ -124,15 +118,15 @@ public class BusinessController {
         }
         return "redirect:/biz/outbound";
     }
-
     // ============ 领料出库 ============
     @GetMapping("/materialIssue")
+    @RequirePermission("biz:apply")
     public String materialIssuePage(Model model) {
         addOptions(model);
         return "materialIssue";
     }
-
     @PostMapping("/materialIssue")
+    @RequirePermission("biz:apply")
     public String materialIssue(@RequestParam Integer warehouseId,
                                 @RequestParam Integer goodsId,
                                 @RequestParam BigDecimal quantity,
@@ -146,15 +140,15 @@ public class BusinessController {
         }
         return "redirect:/biz/materialIssue";
     }
-
     // ============ 回料入库 ============
     @GetMapping("/materialReturn")
+    @RequirePermission("biz:materialReturn")
     public String materialReturnPage(Model model) {
         addOptions(model);
         return "materialReturn";
     }
-
     @PostMapping("/materialReturn")
+    @RequirePermission("biz:materialReturn")
     public String materialReturn(@RequestParam Integer warehouseId,
                                  @RequestParam Integer goodsId,
                                  @RequestParam BigDecimal quantity,
@@ -169,15 +163,15 @@ public class BusinessController {
         }
         return "redirect:/biz/materialReturn";
     }
-
     // ============ 退货处理 ============
     @GetMapping("/return")
+    @RequirePermission("biz:purchaseReturn")
     public String returnPage(Model model) {
         addOptions(model);
         return "return";
     }
-
     @PostMapping("/return")
+    @RequirePermission("biz:purchaseReturn")
     public String doReturn(@RequestParam Integer warehouseId,
                            @RequestParam Integer goodsId,
                            @RequestParam BigDecimal quantity,
@@ -201,15 +195,15 @@ public class BusinessController {
         }
         return "redirect:/biz/return";
     }
-
     // ============ 库存盘点 ============
     @GetMapping("/stocktake")
+    @RequirePermission("biz:check")
     public String stocktakePage(Model model) {
         addOptions(model);
         return "stocktake";
     }
-
     @PostMapping("/stocktake")
+    @RequirePermission("biz:check")
     public String stocktake(@RequestParam Integer warehouseId,
                             @RequestParam Integer goodsId,
                             @RequestParam BigDecimal actualQuantity,
@@ -222,15 +216,15 @@ public class BusinessController {
         }
         return "redirect:/biz/stocktake";
     }
-
     // ============ 仓库调拨 ============
     @GetMapping("/transfer")
+    @RequirePermission("biz:transfer")
     public String transferPage(Model model) {
         addOptions(model);
         return "transfer";
     }
-
     @PostMapping("/transfer")
+    @RequirePermission("biz:transfer")
     public String transfer(@RequestParam Integer fromWarehouseId,
                            @RequestParam Integer toWarehouseId,
                            @RequestParam Integer goodsId,

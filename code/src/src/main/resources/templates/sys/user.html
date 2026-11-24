@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('用户管理')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav}"></nav>
+<main class="container">
+    <h1>用户管理</h1>
+    <p th:if="${msg}" th:text="${msg}"></p>
+    <h2>新增用户</h2>
+    <form method="post" th:action="@{/sys/user/add}">
+        <label>账号 <input name="username" required></label>
+        <label>姓名 <input name="realName" required></label>
+        <label>密码 <input name="password" type="password" required></label>
+        <label>角色编号 <input name="roleId" type="number" min="1" required></label>
+        <button type="submit">新增</button>
+    </form>
+    <h2>现有用户</h2>
+    <section th:each="u : ${userList}">
+        <form method="post" th:action="@{/sys/user/update}">
+            <input name="userId" type="hidden" th:value="${u.userId}">
+            <label>账号 <input name="username" th:value="${u.username}" required></label>
+            <label>姓名 <input name="realName" th:value="${u.realName}" required></label>
+            <label>新密码 <input name="password" type="password" placeholder="留空保留原密码"></label>
+            <label>角色编号 <input name="roleId" type="number" min="1" th:value="${u.roleId}" required></label>
+            <label>状态 <select name="status">
+                <option value="1" th:selected="${u.status == 1}">启用</option>
+                <option value="0" th:selected="${u.status == 0}">禁用</option>
+            </select></label>
+            <button type="submit">保存</button>
+            <button type="submit" th:formaction="@{/sys/user/del/{id}(id=${u.userId})}" formnovalidate>删除</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

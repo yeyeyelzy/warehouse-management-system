@@ -212,7 +212,8 @@ CREATE TABLE inbound_item (
     KEY idx_inbound_id (inbound_id),
     KEY idx_goods_id (goods_id),
     CONSTRAINT fk_ibi_order FOREIGN KEY (inbound_id) REFERENCES inbound_order (inbound_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_ibi_goods FOREIGN KEY (goods_id) REFERENCES goods (goods_id) ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT fk_ibi_goods FOREIGN KEY (goods_id) REFERENCES goods (goods_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_inbound_price CHECK (unit_price >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='入库明细表';
 
 -- ------------------------------------------------------------
@@ -337,19 +338,21 @@ CREATE TABLE stock_batch (
     batch_id INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '批次编号',
     warehouse_id INT UNSIGNED NOT NULL COMMENT '仓库编号',
     goods_id INT UNSIGNED NOT NULL COMMENT '货品编号',
-    inbound_item_id INT UNSIGNED NOT NULL COMMENT '来源入库明细编号',
+    inbound_item_id INT UNSIGNED NULL COMMENT '来源入库明细编号，盘盈新增批次为空',
     batch_no VARCHAR(50) NOT NULL COMMENT '批次号',
     quantity DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '批次剩余数量',
     unit_cost DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '批次单位成本',
+    remaining_cost DECIMAL(12,2) NOT NULL COMMENT '批次剩余成本金额',
     inbound_date DATE NOT NULL COMMENT '入库日期',
     PRIMARY KEY (batch_id),
-    UNIQUE KEY uk_inbound_item (inbound_item_id),
+    KEY idx_batch_inbound_item (inbound_item_id),
     KEY idx_batch_query (warehouse_id, goods_id, inbound_date),
     KEY idx_goods_id (goods_id),
     CONSTRAINT fk_batch_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouse (warehouse_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_batch_goods FOREIGN KEY (goods_id) REFERENCES goods (goods_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_batch_inbound_item FOREIGN KEY (inbound_item_id) REFERENCES inbound_item (item_id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT chk_batch_quantity CHECK (quantity >= 0)
+    CONSTRAINT chk_batch_quantity CHECK (quantity >= 0),
+    CONSTRAINT chk_batch_cost CHECK (remaining_cost >= 0 AND (quantity > 0 OR remaining_cost = 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='成本批次表(FIFO/LIFO核算依据)';
 -- ------------------------------------------------------------
 -- 19. 库存预警记录表（业务表，由触发器自动写入）
